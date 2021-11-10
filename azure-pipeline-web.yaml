@@ -1,0 +1,152 @@
+pool:
+  vmImage: 'ubuntu-latest'
+  
+variables:
+  buildConfiguration: 'Test'
+  
+variables:
+    - name: WebJobName
+      value: web
+    - name: API Job
+      value: Api
+ 
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Test/web
+    
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Test/api
+   
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Test/test
+stages:
+    - stage: Build
+      displayName: WebApp Build Stage
+      jobs:
+      - job: Build
+        displayName: Build
+        steps:
+        - task: DotNetCoreCLI@2
+          displayName: Publish Project As WebJob
+          inputs:
+            command: 'publish'
+            publishWebProjects: false
+            projects: '**/*.csproj'
+            arguments: '--configuration $(buildConfiguration) --output $(Build.BinariesDirectory)/$(Build.BuildId)'
+            zipAfterPublish: false
+            modifyOutputPath: false
+            workingDirectory: 'src'
+stages:
+    - stage: Build
+      displayName: ApI Build Stage
+      jobs:
+      - job: Build
+        displayName: Build
+        steps:
+
+        - task: DotNetCoreCLI@2
+          displayName: Publish Project As WebJob
+          inputs:
+            command: 'publish'
+            publishWebProjects: false
+            projects: '**/*.csproj'
+            arguments: '--configuration $(buildConfiguration) --output $(Build.BinariesDirectory)/$(Build.BuildId)'
+            zipAfterPublish: false
+            modifyOutputPath: false
+            workingDirectory: 'src'
+
+ - task: publishBuildArtifact@1
+   displayName: 'publish web artifacts'
+   inputs:
+     PathtoPublish: '$(Build.BinariesDirectory)/$(Build.BuildId)
+     ArtifactName: 'drop-$(Build.BuildId)
+     publishLocation: 'Container'
+     
+ - task: publishBuildArtifact@2
+   displayName: 'publish Api artifacts'
+   inputs:
+     PathtoPublish: '$(Build.BinariesDirectory)/$(Build.BuildId)
+     ArtifactName: 'drop-$(Build.BuildId)
+     publishLocation: 'Container1'
+         
+- task: PublishTestResults@2
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.txt'
+    failOnStandardError: 'true'
+    
+  - stage: dev
+  jobs:
+  – deployment: dev_deploy
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    environment: 'dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          
+          
+  – stage: qa_deploy
+  jobs:
+  – deployment: qa_deploy
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    environment: 'qa-hello'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          – script: "deploy the code and artifacts into qa"""
+          
+   - stage: Approve
+      displayName: Approve
+      jobs:
+      - job: approve
+        displayName: execution approval
+        pool:
+        steps:
+        - task: ManualValidation@@
+          inputs:
+            notifyUsers: 'pothureddy@gmail.com'
+            instructions: 'approve the pipeline'
+
+ – stage: prod
+  jobs:
+  – deployment: qa_deploy
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    environment: 'prod'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          – script: "deploy the code and artifacts into qa"
+          
+   - stage: Approve
+      displayName: Approve
+      jobs:
+      - job: approve
+        displayName: execution approval
+        pool:
+        steps:
+        - task: ManualValidation@@
+          timeoutInMinutes: 60
+          inputs:
+            notifyUsers: 'pothureddy@gmail.com'
+            instructions: 'Review the apply'
+    

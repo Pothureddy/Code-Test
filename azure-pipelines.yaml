@@ -1,0 +1,91 @@
+variables:
+- group: vm-provision
+
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - Test/terraform
+stages:
+- stage: validate
+  displayName: Validate
+  jobs:
+  - job: validate
+    pool:
+      vmImage: vs2017-win2016
+    steps:
+    - task: TerraformInstaller@@
+      displayName: Install Terraform
+      Inputs:
+        terraformVersion: "latest"
+    #Init
+    - task: TerraformCLI@@
+      displayName: Intialize the Terraform Code
+      env:
+      Inputs:
+        command: 'Init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Test/terraform'
+        commandOptions: '-backend-config=storage_account_name=$(storageaccount) -backen_config=container_name=$(container_name) -backend-config=key=$(key)'
+        backendTyoe: 'selfConfigured'
+    #validate
+     - task: TerraformCLI@@
+       displayName: validate config
+       inputs:
+         command: 'validate'
+         workingDirectory: '$(System.DefaultWorkingDirectory)/Test/terraform'
+         
+  - stage: Plan
+      diplayName: Plan
+      jobs:
+       - job: Plan
+         pool:
+           vmImage: vs2017-win201
+           
+       - task: TerraformCLI@@
+           displayName: terraform Plan
+           env:
+             subscription_id: $(subscription_id)
+             Client_Id: $(Client_Id)
+             Client_Secret: $(Client_Secret)
+             Tenant_Id: $(Tenant_Id)
+           inputs:
+             command: 'plan'
+             workingDirectory: '$(System.DefaultWorkingDirectory)/Test/terraform'
+              
+  - stage: Apply
+      displayName: apply the terraform code
+      jobs:
+      - job: apply
+      pool:
+       vmImage: win-2016
+      - task: TerraformCLI@@
+        displayName: apply terraform code
+        env:
+         subscription_id: $(subscription_id)
+         Client_Id: $(Client_Id)
+         Client_Secret: $(Client_Secret)
+         Tenant_Id: $(Tenant_Id)
+       inputs:
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/Test/terraform'
+       commandOptions: '-auto-approve'
+    # Approve
+    - stage: Approve
+      displayName: Approve
+      jobs:
+      - job: approve
+        displayName: execution approval
+        pool:
+        steps:
+        - task: ManualValidation@@
+          timeoutInMinutes: 60
+          inputs:
+            notifyUsers: 'pothureddy@gmail.com'
+            instructions: 'Review the apply'
+      
+      
+        
+        
+      
